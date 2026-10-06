@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>NISUS016 // NEON TETRIS</title>
+<style>
+  :root{
+    --bg:#0a0e27; --panel:#12173a; --panel2:#0d1230;
+    --cyan:#00f0ff; --pink:#ff00ff; --yellow:#ffe600; --green:#00ff88;
+    --purple:#a855f7; --orange:#ff6b35; --red:#ff2d55; --blue:#2d7dff;
+    --text:#e8ecff; --dim:#8b93c9;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; min-height:100vh; color:var(--text);
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:
+      radial-gradient(1000px 500px at 20% -10%, rgba(255,0,255,.15), transparent 60%),
+      radial-gradient(1000px 600px at 90% 10%, rgba(0,240,255,.14), transparent 60%),
+      radial-gradient(800px 800px at 50% 110%, rgba(168,85,247,.12), transparent 60%),
+      var(--bg);
+    display:flex; flex-direction:column; align-items:center; padding:18px 12px 40px;
+  }
+  .scanlines{position:fixed; inset:0; pointer-events:none; z-index:50; opacity:.07;
+    background:repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);}
+  header{text-align:center; max-width:720px;}
+  .logo{
+    font-weight:900; letter-spacing:3px; font-size:clamp(26px,5vw,44px); margin:6px 0 0;
+    background:linear-gradient(90deg,var(--cyan),var(--pink),var(--yellow));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 18px rgba(0,240,255,.45));
+  }
+  .sub{color:var(--dim); letter-spacing:4px; font-size:12px; text-transform:uppercase; margin:6px 0 2px;}
+  .byline{margin:8px 0 14px; font-size:14px; color:var(--dim);}
+  .byline a{color:var(--cyan); text-decoration:none; border-bottom:1px dashed var(--cyan);}
+  .wrap{display:flex; gap:16px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:900px;}
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid rgba(0,240,255,.25); border-radius:16px; padding:14px;
+    box-shadow:0 0 0 1px rgba(255,0,255,.08), 0 10px 40px rgba(0,0,0,.5), 0 0 30px rgba(0,240,255,.08);
+  }
+  #board-panel{padding:14px;}
+  canvas#game{
+    display:block; border-radius:10px; background:#05071a;
+    border:1px solid rgba(0,240,255,.35);
+    box-shadow:inset 0 0 40px rgba(0,0,0,.7), 0 0 24px rgba(255,0,255,.15);
+    touch-action:none;
+  }
+  .side{width:200px; display:flex; flex-direction:column; gap:12px;}
+  .card{background:rgba(5,7,26,.7); border:1px solid rgba(0,240,255,.18); border-radius:12px; padding:10px 12px;}
+  .card h3{margin:0 0 8px; font-size:11px; letter-spacing:2px; color:var(--cyan); text-transform:uppercase;}
+  .stat-row{display:flex; justify-content:space-between; font-size:14px; padding:3px 0;}
+  .stat-row b{color:#fff;}
+  .big-score{font-size:28px; font-weight:900; color:#fff; text-shadow:0 0 12px var(--cyan);}
+  canvas.mini{width:100%; height:64px; background:#05071a; border-radius:8px; border:1px solid rgba(255,255,255,.08);}
+  #nextCanvas{height:150px;}
+  .btn{
+    width:100%; padding:12px; margin-top:4px; border:none; border-radius:10px; cursor:pointer;
+    font-weight:800; letter-spacing:1px; font-size:14px; color:#0a0e27;
+    background:linear-gradient(90deg,var(--cyan),var(--green));
+    box-shadow:0 0 18px rgba(0,240,255,.5);
+  }
+  .btn.pink{background:linear-gradient(90deg,var(--pink),var(--purple)); color:#fff; box-shadow:0 0 18px rgba(255,0,255,.5);}
+  .btn.ghost{background:transparent; color:var(--cyan); border:1px solid var(--cyan); box-shadow:none;}
+  .controls{max-width:720px; margin-top:16px; font-size:13px; color:var(--dim); text-align:center; line-height:1.9;}
+  kbd{background:#1c2456; border:1px solid rgba(255,255,255,.2); border-bottom-width:3px; border-radius:6px; padding:1px 7px; font-size:12px; color:#fff; font-family:inherit;}
+  #overlay{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
+    background:rgba(5,7,26,.78); backdrop-filter:blur(4px);
+  }
+  #overlay.show{display:flex;}
+  .modal{text-align:center; padding:34px 40px; border-radius:20px; background:linear-gradient(180deg,#161c48,#0a0e27);
+    border:1px solid var(--cyan); box-shadow:0 0 60px rgba(0,240,255,.35); max-width:90vw;}
+  .modal h1{margin:0 0 6px; font-size:34px; letter-spacing:2px;}
+  .modal p{color:var(--dim); margin:6px 0 16px;}
+  .touch{display:none; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap; max-width:340px;}
+  .touch button{
+    flex:1 1 30%; min-width:90px; padding:14px 0; font-size:20px; border-radius:12px; cursor:pointer;
+    background:#1c2456; color:#fff; border:1px solid rgba(0,240,255,.4);
+  }
+  .touch button:active{background:var(--cyan); color:#0a0e27;}
+  @media (max-width:640px){ .side{width:100%; max-width:340px; flex-direction:row; flex-wrap:wrap;} .card{flex:1 1 45%;} .touch{display:flex;} }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<header>
+  <div class="sub">NISUS016 presents</div>
+  <div class="logo">NEON TETRIS</div>
+  <p class="byline">by <a href="https://github.com/NISUS016">NISHCHAL // NISUS016</a> — Python • TypeScript • AI • Interactive Web &nbsp;•&nbsp; ⭐ the <a href="https://github.com/NISUS016/tetris-arcade">repo</a></p>
+</header>
+
+<div class="wrap">
+  <div class="panel" id="board-panel">
+    <canvas id="game" width="300" height="600"></canvas>
+    <div class="touch" id="touch">
+      <button data-k="left">◀</button><button data-k="rotate">⟳</button><button data-k="right">▶</button>
+      <button data-k="down">▼</button><button data-k="hard">⚡</button><button data-k="hold">HOLD</button>
+    </div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h3>Score</h3>
+      <div class="big-score" id="score">0</div>
+      <div class="stat-row"><span>Best</span><b id="best">0</b></div>
+      <div class="stat-row"><span>Lines</span><b id="lines">0</b></div>
+      <div class="stat-row"><span>Level</span><b id="level">1</b></div>
+    </div>
+    <div class="card"><h3>Next</h3><canvas class="mini" id="nextCanvas" width="160" height="150"></canvas></div>
+    <div class="card"><h3>Hold <span style="opacity:.6">(C)</span></h3><canvas class="mini" id="holdCanvas" width="160" height="64"></canvas></div>
+    <button class="btn" id="startBtn">▶ START / RESTART (R)</button>
+    <button class="btn pink" id="pauseBtn">⏸ PAUSE (P)</button>
+    <a href="https://github.com/NISUS016" style="text-decoration:none"><button class="btn ghost">👾 BACK TO PROFILE</button></a>
+  </div>
+</div>
+
+<div class="controls">
+  <kbd>←</kbd><kbd>→</kbd> move &nbsp; <kbd>↓</kbd> soft drop &nbsp; <kbd>↑</kbd>/<kbd>X</kbd> rotate &nbsp; <kbd>Z</kbd> rotate back &nbsp; <kbd>Space</kbd> hard drop &nbsp; <kbd>C</kbd> hold &nbsp; <kbd>P</kbd> pause &nbsp; <kbd>R</kbd> restart
+</div>
+
+<div id="overlay"><div class="modal">
+  <h1 id="ovTitle">READY?</h1>
+  <p id="ovSub">Press START or hit <kbd>R</kbd> — clear lines, level up, chase the glow.</p>
+  <button class="btn" id="ovBtn" style="max-width:280px">▶ &nbsp;INSERT COIN</button>
+</div></div>
+
+<script>
+(() => {
+"use strict";
+const COLS=10, ROWS=20, CELL=30;
+const cv=document.getElementById('game'), ctx=cv.getContext('2d');
+const nextCv=document.getElementById('nextCanvas'), nctx=nextCv.getContext('2d');
+const holdCv=document.getElementById('holdCanvas'), hctx=holdCv.getContext('2d');
+const el=id=>document.getElementById(id);
+const scoreEl=el('score'), linesEl=el('lines'), levelEl=el('level'), bestEl=el('best');
+const overlay=el('overlay'), ovTitle=el('ovTitle'), ovSub=el('ovSub');
+
+const COLORS={I:'#00f0ff',O:'#ffe600',T:'#c724ff',S:'#00ff88',Z:'#ff2d55',J:'#2d7dff',L:'#ff6b35'};
+const SHAPES={
+  I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  O:[[1,1],[1,1]],
+  T:[[0,1,0],[1,1,1],[0,0,0]],
+  S:[[0,1,1],[1,1,0],[0,0,0]],
+  Z:[[1,1,0],[0,1,1],[0,0,0]],
+  J:[[1,0,0],[1,1,1],[0,0,0]],
+  L:[[0,0,1],[1,1,1],[0,0,0]]
+};
+const KEYS=Object.keys(SHAPES);
+let grid, bag, queue, cur, hold, canHold, score, lines, level, best, dropMs, lastT, acc, running, paused, over, flashRows=[], particles=[];
+
+best=+(localStorage.getItem('nisus-tetris-best')||0); bestEl.textContent=best;
+
+function newGrid(){ return Array.from({length:ROWS},()=>Array(COLS).fill(null)); }
+function refill(){ bag=[...KEYS]; for(let i=bag.length-1;i>0;i--){const j=(Math.random()*(i+1))|0; [bag[i],bag[j]]=[bag[j],bag[i]];} }
+function take(){ if(bag.length<7) refill(); return bag.pop(); }
+function makePiece(k){ const s=SHAPES[k].map(r=>r.slice()); return {k, m:s, x:((COLS-s[0].length)/2)|0, y: k==='I'?-1:0}; }
+function rot(m,dir){ const N=m.length, o=Array.from({length:N},()=>Array(N).fill(0));
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++) o[y][x]= dir>0 ? m[N-1-x][y] : m[x][N-1-y]; return o; }
+
+function collide(m,px,py){
+  for(let y=0;y<m.length;y++)for(let x=0;x<m[y].length;x++){ if(!m[y][x])continue;
+    const nx=px+x, ny=py+y;
+    if(nx<0||nx>=COLS||ny>=ROWS) return true;
+    if(ny>=0 && grid[ny][nx]) return true;
+  } return false;
+}
+function tryRotate(dir){
+  if(!cur||paused||over||!running) return;
+  const nm=rot(cur.m,dir);
+  const kicks=[[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,-1],[1,-1]];
+  for(const [dx,dy] of kicks){ if(!collide(nm,cur.x+dx,cur.y+dy)){ cur.m=nm; cur.x+=dx; cur.y+=dy; return; } }
+}
+function spawn(){
+  cur=makePiece(queue.shift()); queue.push(take()); canHold=true;
+  if(collide(cur.m,cur.x,cur.y)){ gameOver(); }
+}
+function lock(){
+  const{k,m,x,y}=cur;
+  for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++){ if(!m[r][c])continue;
+    const ny=y+r, nx=x+c; if(ny>=0) grid[ny][nx]=k;
+  }
+  burst(x,y);
+  let cleared=0;
+  for(let r=ROWS-1;r>=0;r--){ if(grid[r].every(v=>v)){ grid.splice(r,1); grid.unshift(Array(COLS).fill(null)); cleared++; r++; } }
+  if(cleared){
+    const pts=[0,40,100,300,1200][cleared]*level;
+    score+=pts; lines+=cleared;
+    const nl=((lines/10)|0)+1; if(nl!==level){ level=nl; dropMs=speedFor(level); }
+    flashRows=[]; updateHUD();
+  }
+  spawn(); updateHUD();
+}
+function speedFor(l){ return Math.max(60, 800*Math.pow(0.85,l-1)); }
+function burst(px,py){ for(let i=0;i<14;i++) particles.push({x:(px+1.5)*CELL+ (Math.random()-.5)*60, y:(py+1)*CELL, vx:(Math.random()-.5)*220, vy:-Math.random()*220-40, life:.5+Math.random()*.4, c:['#00f0ff','#ff00ff','#ffe600','#00ff88'][i%4]}); }
+
+function step(dt){
+  acc+=dt;
+  while(acc>=dropMs){ acc-=dropMs; if(!cur) break;
+    if(!collide(cur.m,cur.x,cur.y+1)) cur.y++;
+    else { lock(); if(over) return; }
+  }
+}
+function hardDrop(){ if(!cur||!running||paused||over)return;
+  while(!collide(cur.m,cur.x,cur.y+1)) {cur.y++; score+=2;}
+  lock(); updateHUD();
+}
+function doHold(){ if(!cur||!canHold||!running||paused||over)return;
+  const ck=cur.k;
+  if(!hold){ hold=ck; spawn(); } else { const t=hold; hold=ck; cur=makePiece(t); if(collide(cur.m,cur.x,cur.y)){gameOver();return;} }
+  canHold=false; drawMini();
+}
+
+function reset(){
+  grid=newGrid(); refill(); queue=[]; for(let i=0;i<5;i++) queue.push(take());
+  hold=null; canHold=true; score=0; lines=0; level=1; dropMs=speedFor(1);
+  acc=0; lastT=performance.now(); running=true; paused=false; over=false; particles=[];
+  spawn(); updateHUD(); drawMini(); hideOverlay();
+}
+function gameOver(){
+  over=true; running=false;
+  if(score>best){ best=score; localStorage.setItem('nisus-tetris-best',best); }
+  updateHUD(); showOverlay('GAME OVER','Score '+score+' • Lines '+lines+' • Level '+level+(score>=best&&score>0?' — NEW BEST! 🏆':''));
+}
+function togglePause(){
+  if(!running||over) return; paused=!paused;
+  if(paused) showOverlay('PAUSED','Take a breath. Hit P to resume.');
+  else hideOverlay();
+}
+function showOverlay(t,s){ ovTitle.textContent=t; ovSub.innerHTML=s; overlay.classList.add('show'); }
+function hideOverlay(){ overlay.classList.remove('show'); }
+function updateHUD(){ scoreEl.textContent=score; linesEl.textContent=lines; levelEl.textContent=level; bestEl.textContent=best; }
+
+function drawBlock(g,px,py,color,alpha=1,ghost=false){
+  const x=px*CELL, y=py*CELL, p=2;
+  g.save(); g.globalAlpha=alpha;
+  if(ghost){ g.strokeStyle=color; g.lineWidth=2; g.strokeRect(x+p,y+p,CELL-p*2,CELL-p*2); g.restore(); return; }
+  const gr=g.createLinearGradient(x,y,x,y+CELL);
+  gr.addColorStop(0,color); gr.addColorStop(1,'rgba(0,0,0,.45)');
+  g.fillStyle=gr; g.shadowColor=color; g.shadowBlur=14;
+  roundRect(g,x+p,y+p,CELL-p*2,CELL-p*2,5); g.fill();
+  g.shadowBlur=0; g.fillStyle='rgba(255,255,255,.35)';
+  roundRect(g,x+p+3,y+p+3,CELL-p*2-6,7,3); g.fill();
+  g.restore();
+}
+function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle='rgba(0,240,255,.07)'; ctx.lineWidth=1;
+  for(let x=1;x<COLS;x++){ ctx.beginPath(); ctx.moveTo(x*CELL+.5,0); ctx.lineTo(x*CELL+.5,ROWS*CELL); ctx.stroke(); }
+  for(let y=1;y<ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*CELL+.5); ctx.lineTo(COLS*CELL,y*CELL+.5); ctx.stroke(); }
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){ const k=grid[y][x]; if(k) drawBlock(ctx,x,y,COLORS[k]); }
+  if(cur){
+    let gy=cur.y; while(!collide(cur.m,cur.x,gy+1)) gy++;
+    for(let r=0;r<cur.m.length;r++)for(let c=0;c<cur.m[r].length;c++){ if(!cur.m[r][c])continue;
+      const ny=gy+r; if(ny>=0) drawBlock(ctx,cur.x+c,ny,COLORS[cur.k],.5,true); }
+    for(let r=0;r<cur.m.length;r++)for(let c=0;c<cur.m[r].length;c++){ if(!cur.m[r][c])continue;
+      const ny=cur.y+r; if(ny>=0) drawBlock(ctx,cur.x+c,ny,COLORS[cur.k]); }
+  }
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){ ctx.globalAlpha=Math.max(0,p.life*2); ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,4,4); ctx.globalAlpha=1; }
+}
+function drawPieceMini(g,key,ox,oy,cell){
+  const m=SHAPES[key], w=m[0].length, h=m.length;
+  const sx=ox+(4-w)*cell/2, sy=oy;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){ if(!m[y][x])continue;
+    g.save(); g.shadowColor=COLORS[key]; g.shadowBlur=8; g.fillStyle=COLORS[key];
+    roundRect(g,sx+x*cell+1,sy+y*cell+1,cell-2,cell-2,3); g.fill(); g.restore(); }
+}
+function drawMini(){
+  nctx.clearRect(0,0,nextCv.width,nextCv.height);
+  queue.slice(0,3).forEach((k,i)=>drawPieceMini(nctx,k,50,8+i*48,11));
+  hctx.clearRect(0,0,holdCv.width,holdCv.height);
+  if(hold) drawPieceMini(hctx,hold,60,10,11);
+  else { hctx.fillStyle='#3a4380'; hctx.font='11px sans-serif'; hctx.fillText('empty — press C',28,36); }
+}
+
+let last=performance.now();
+function loop(t){
+  const dt=Math.min(100,t-last); last=t;
+  if(running&&!paused&&!over){ step(dt);
+    for(const p of particles){ p.x+=p.vx*dt/1000; p.y+=p.vy*dt/1000; p.vy+=500*dt/1000; p.life-=dt/1000; }
+  }
+  draw(); requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown',e=>{
+  if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key)) e.preventDefault();
+  const k=e.key;
+  if(k==='r'||k==='R'){ reset(); return; }
+  if(k==='p'||k==='P'||k==='Escape'){ togglePause(); return; }
+  if(!running||paused||over) return;
+  if(k==='ArrowLeft'){ if(!collide(cur.m,cur.x-1,cur.y)) cur.x--; }
+  else if(k==='ArrowRight'){ if(!collide(cur.m,cur.x+1,cur.y)) cur.x++; }
+  else if(k==='ArrowDown'){ if(!collide(cur.m,cur.x,cur.y+1)){cur.y++; score+=1; updateHUD();} }
+  else if(k==='ArrowUp'||k==='x'||k==='X') tryRotate(1);
+  else if(k==='z'||k==='Z') tryRotate(-1);
+  else if(k===' '){ hardDrop(); }
+  else if(k==='c'||k==='C'){ doHold(); }
+});
+document.getElementById('touch').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const a=b.dataset.k;
+  if(a==='left'){ if(cur&&!collide(cur.m,cur.x-1,cur.y))cur.x--; }
+  if(a==='right'){ if(cur&&!collide(cur.m,cur.x+1,cur.y))cur.x++; }
+  if(a==='down'){ if(cur&&!collide(cur.m,cur.x,cur.y+1)){cur.y++; score++; updateHUD();} }
+  if(a==='rotate') tryRotate(1);
+  if(a==='hard') hardDrop();
+  if(a==='hold') doHold();
+});
+// swipe controls on canvas
+let tx=0,ty=0;
+cv.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; tx=t.clientX; ty=t.clientY; },{passive:true});
+cv.addEventListener('touchend',e=>{
+  const t=e.changedTouches[0], dx=t.clientX-tx, dy=t.clientY-ty;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20){ tryRotate(1); return; }
+  if(Math.abs(dx)>Math.abs(dy)){ if(cur){ if(dx>0&&!collide(cur.m,cur.x+1,cur.y))cur.x++; if(dx<0&&!collide(cur.m,cur.x-1,cur.y))cur.x--; } }
+  else { if(dy>40) hardDrop(); else if(cur&&!collide(cur.m,cur.x,cur.y+1)){cur.y++; score++; updateHUD();} }
+},{passive:true});
+
+el('startBtn').onclick=reset; el('ovBtn').onclick=reset; el('pauseBtn').onclick=togglePause;
+reset(); paused=true; running=true; showOverlay('READY?','Press <b>INSERT COIN</b> or hit <kbd>R</kbd> — arrow keys move, <kbd>Space</kbd> slams. Mobile: buttons + swipe.');
+// start paused until user clicks
+over=false;
+requestAnimationFrame(t=>{last=t; requestAnimationFrame(loop);});
+})();
+</script>
+</body>
+</html>
